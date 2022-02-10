@@ -1,47 +1,53 @@
 const express = require('express');
 const router = express.Router();
 const validUrl = require('valid-url');
-const shortId = require('shortId');
-const config = requrie('config');
+const shortid = require('shortid');
+const config = require('config');
 
-const Url = require('../models/url');
+const Url = require('../models/Url');
 
+// @route     POST /api/url/shorten
+// @desc      Create short URL
 router.post('/shorten', async (req, res) => {
-    const { longUrl } = req.body;
-    const baseUrl = config.get('baseUrl');
+  const { longUrl } = req.body;
+  const baseUrl = config.get('baseUrl');
 
-    if(!validUrl.isHttpUri(baseUrl)){
-        return  res.status(401).json('invalidUrl')
-    }    
+  // Check base url
+  if (!validUrl.isUri(baseUrl)) {
+    return res.status(401).json('Invalid base url');
+  }
 
-    const urlCode = shortId.generate();
+  // Create url code
+  const urlCode = shortid.generate();
 
-    if(validUrl.isUri(longUrl)){
-        try{
-            let url = await Url.findOne({longUrl});
-            if(url) {
-                res.json(url);
-            } else {
-                const shortUrl = baseUrl + '/' + urlCode;
+  // Check long url
+  if (validUrl.isUri(longUrl)) {
+    try {
+      let url = await Url.findOne({ longUrl });
 
-                url = new Url({
-                    longUrl,
-                    shortUrl,
-                    date: new Date()
-                });
+      if (url) {
+        res.json(url);
+      } else {
+        const shortUrl = baseUrl + '/' + urlCode;
 
-              await  url.save();
+        url = new Url({
+          longUrl,
+          shortUrl,
+          urlCode,
+          date: new Date()
+        });
 
-              res.json(url)
-            }
+        await url.save();
 
-        } catch {
-            console.log('not good url')
-        }
-    } else {
-
+        res.json(url);
+      }
+    } catch (err) {
+      console.error(err);
+      res.status(500).json('Server error');
     }
+  } else {
+    res.status(401).json('Invalid long url');
+  }
 });
-
 
 module.exports = router;
